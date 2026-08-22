@@ -1,0 +1,6 @@
+{
+  "name": "Проверка знаний по ТБ",
+  "description": "Приложение для тестирования и аттестации сотрудников по технике безопасности и охране труда с режимами тренировки и экзамена, базой данных SQLite и панелью администратора.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

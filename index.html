@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Проверка знаний по ТБ — Система тестирования и аттестации персонала</title>
+    <meta name="description" content="Локальная программа проверки знаний по технике безопасности, пожарной безопасности, охране труда и электробезопасности с базой данных SQLite." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var _origFetch = typeof window !== 'undefined' ? window.fetch : null;
+          var _customFetch = _origFetch;
+          var desc = {
+            get: function() {
+              return _customFetch || _origFetch;
+            },
+            set: function(fn) {
+              _customFetch = fn;
+            },
+            configurable: true,
+            enumerable: true
+          };
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, 'fetch', desc);
+            } catch (e) {}
+          }
+          if (typeof window !== 'undefined') {
+            try {
+              Object.defineProperty(window, 'fetch', desc);
+            } catch (e) {}
+          }
+          if (typeof globalThis !== 'undefined') {
+            try {
+              Object.defineProperty(globalThis, 'fetch', desc);
+            } catch (e) {}
+          }
+        } catch (err) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-[#E4E3E0] text-[#141414] antialiased selection:bg-[#F27D26] selection:text-[#141414]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
