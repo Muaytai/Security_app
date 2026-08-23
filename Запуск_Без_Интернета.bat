@@ -1,29 +1,23 @@
 @echo off
-chcp 65001 >nul
-title Система проверки знаний по ТБ
-color 0B
+title Safety Test Pro
+color 0b
+cls
 
-echo =================================================================
-echo   Запуск системы проверки знаний по технике безопасности
-echo =================================================================
-echo.
+echo Zapusk sistemy proverki znaniy...
 
 where node >nul 2>nul
 if %errorlevel% neq 0 (
-    color 0C
-    echo [ОШИБКА] Node.js не установлен!
-    echo Скачайте бесплатный Node.js: https://nodejs.org/
-    echo.
+    echo [OSHIBKA] Ustanovite Node.js s https://nodejs.org/
     pause
+    start https://nodejs.org/
     exit /b 1
 )
 
 if not exist node_modules (
-    echo [Первый запуск] Установка необходимых библиотек...
-    call npm install
+    echo Ustanovka bibliotek...
+    call npm install --no-audit --no-fund
 )
 
-echo Запуск локального сервера тестирования...
 start "" http://localhost:3000
 npm run dev
 

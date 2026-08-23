@@ -1,29 +1,26 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
 const http = require('http');
 
 let mainWindow = null;
-let serverProcess = null;
 const SERVER_PORT = 3000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 
 function startBackendServer() {
-  const serverPath = path.join(__dirname, 'dist', 'server.cjs');
-  
-  serverProcess = spawn(process.execPath, [serverPath], {
-    env: { ...process.env, NODE_ENV: 'production', PORT: SERVER_PORT.toString() },
-    stdio: 'inherit',
-    windowsHide: true
-  });
-
-  serverProcess.on('error', (err) => {
-    console.error('Failed to start internal server:', err);
-  });
+  try {
+    process.env.NODE_ENV = 'production';
+    process.env.PORT = SERVER_PORT.toString();
+    // Directly require the bundled server in the Electron background environment
+    const serverPath = path.join(__dirname, 'dist', 'server.cjs');
+    require(serverPath);
+    console.log('Backend server initialized successfully.');
+  } catch (err) {
+    console.error('Failed to load internal server:', err);
+  }
 }
 
-function checkServerReady(retries = 30, delay = 300) {
-  return new Promise((resolve, reject) => {
+function checkServerReady(retries = 40, delay = 250) {
+  return new Promise((resolve) => {
     let count = 0;
     const interval = setInterval(() => {
       count++;
@@ -35,7 +32,7 @@ function checkServerReady(retries = 30, delay = 300) {
       }).on('error', () => {
         if (count >= retries) {
           clearInterval(interval);
-          reject(new Error('Server readiness check timeout'));
+          resolve(false);
         }
       });
     }, delay);
@@ -44,8 +41,8 @@ function checkServerReady(retries = 30, delay = 300) {
 
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1366,
-    height: 860,
+    width: 1400,
+    height: 900,
     minWidth: 1024,
     minHeight: 700,
     title: 'Система проверки знаний по технике безопасности и охране труда',
@@ -58,16 +55,9 @@ async function createMainWindow() {
     }
   });
 
-  try {
-    await checkServerReady();
-    await mainWindow.loadURL(SERVER_URL);
-    mainWindow.show();
-  } catch (err) {
-    console.error('Error connecting to backend:', err);
-    // Fallback direct load attempt
-    mainWindow.loadURL(SERVER_URL);
-    mainWindow.show();
-  }
+  await checkServerReady();
+  await mainWindow.loadURL(SERVER_URL);
+  mainWindow.show();
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -86,11 +76,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (serverProcess) {
-    try {
-      serverProcess.kill();
-    } catch (_) {}
-  }
   if (process.platform !== 'darwin') {
     app.quit();
   }
