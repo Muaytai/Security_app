@@ -1,43 +1,69 @@
 @echo off
-title Sistema TB - Sborca EXE
+chcp 65001 > nul
+setlocal
+cd /d "%~dp0"
+title Сборка Windows EXE - Охрана труда и ТБ
 color 0a
 cls
 
-echo ====================================================================
-echo   SBORKA WINDOWS PRILOZHENIYA (.EXE)
-echo   Sistema proverki znaniy po tekhnike bezopasnosti
-echo ====================================================================
+echo ===============================================================================
+echo        СОЗДАНИЕ АВТОНОМНОГО WINDOWS ПРИЛОЖЕНИЯ (.EXE)
+echo ===============================================================================
 echo.
 
 where node >nul 2>nul
 if %errorlevel% neq 0 (
     color 0c
-    echo [OSHIBKA] Node.js ne nayden na kompyutere.
-    echo Ustanovite Node.js s sayta https://nodejs.org/
+    echo [ОШИБКА] На вашем компьютере не установлена среда Node.js.
+    echo Для сборки EXE файла требуется Node.js (LTS).
+    echo Скачайте с официального сайта: https://nodejs.org/
     echo.
     pause
     start https://nodejs.org/
     exit /b 1
 )
 
-echo [1/4] Ustanovka paketov...
+echo [Шаг 1 из 4] Установка необходимых пакетов...
 call npm install --no-audit --no-fund
+if %errorlevel% neq 0 (
+    color 0c
+    echo [ОШИБКА] Не удалось установить пакеты.
+    pause
+    exit /b 1
+)
 
 echo.
-echo [2/4] Kompilyatsiya proekta...
+echo [Шаг 2 из 4] Компиляция клиентской части и локальной базы SQLite...
 call npm run build
+if %errorlevel% neq 0 (
+    color 0c
+    echo [ОШИБКА] Сбой при сборке проекта.
+    pause
+    exit /b 1
+)
 
 echo.
-echo [3/4] Ustanovka Electron builder...
+echo [Шаг 3 из 4] Подключение упаковщика Electron Builder...
 call npm install --save-dev electron electron-builder
+if %errorlevel% neq 0 (
+    color 0c
+    echo [ОШИБКА] Не удалось загрузить сборщик Electron.
+    pause
+    exit /b 1
+)
 
 echo.
-echo [4/4] Sozdanie avtonomnogo EXE fayla...
+echo [Шаг 4 из 4] Упаковка в автономный исполняемый файл .EXE...
 call npx electron-builder --win portable
+if %errorlevel% neq 0 (
+    echo Повтор сборки со стандартным профилем...
+    call npx electron-builder --win
+)
 
 echo.
-echo ====================================================================
-echo GOTOVO. EXE fayl sozdan v papke dist-electron ili dist
-echo ====================================================================
+echo ===============================================================================
+echo ГОТОВО! Сборка успешно завершена.
+echo Готовый файл программы (.exe) находится в папке: dist-electron\ или dist\
+echo ===============================================================================
 echo.
 pause
