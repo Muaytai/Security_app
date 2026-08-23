@@ -20,10 +20,12 @@
     "directories": {
       "output": "dist-electron"
     },
+    "asar": false,
     "files": [
       "dist/**/*",
       "electron-main.cjs",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
     "win": {
       "target": [

@@ -1,25 +1,49 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
 
 let mainWindow = null;
 const SERVER_PORT = 3000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 
-function startBackendServer() {
+// Create log file for troubleshooting
+const logPath = path.join(app.getPath('userData'), 'app-debug.log');
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try {
+    fs.appendFileSync(logPath, line);
+  } catch (_) {}
+  console.log(msg);
+}
+
+log(`Starting SafetyTestPro Electron main process. UserData: ${app.getPath('userData')}`);
+
+async function startBackendServer() {
   try {
     process.env.NODE_ENV = 'production';
     process.env.PORT = SERVER_PORT.toString();
-    // Directly require the bundled server in the Electron background environment
+    process.env.USER_DATA_PATH = app.getPath('userData');
+
+    log('Loading bundled server...');
     const serverPath = path.join(__dirname, 'dist', 'server.cjs');
+    
+    if (!fs.existsSync(serverPath)) {
+      throw new Error(`Server file not found at: ${serverPath}`);
+    }
+
     require(serverPath);
-    console.log('Backend server initialized successfully.');
+    log('Backend server initialized successfully.');
   } catch (err) {
-    console.error('Failed to load internal server:', err);
+    log(`CRITICAL: Failed to load backend server: ${err.stack || err.message}`);
+    dialog.showErrorBox(
+      'Ошибка запуска сервера',
+      `Не удалось запустить внутренний сервер приложения:\n\n${err.message}\n\nЛог сохранен: ${logPath}`
+    );
   }
 }
 
-function checkServerReady(retries = 40, delay = 250) {
+function checkServerReady(retries = 60, delay = 300) {
   return new Promise((resolve) => {
     let count = 0;
     const interval = setInterval(() => {
@@ -27,11 +51,13 @@ function checkServerReady(retries = 40, delay = 250) {
       http.get(`${SERVER_URL}/api/health`, (res) => {
         if (res.statusCode === 200) {
           clearInterval(interval);
+          log(`Server responded OK on attempt ${count}`);
           resolve(true);
         }
-      }).on('error', () => {
+      }).on('error', (err) => {
         if (count >= retries) {
           clearInterval(interval);
+          log(`Server health check timed out after ${retries} attempts. Last error: ${err.message}`);
           resolve(false);
         }
       });
@@ -55,18 +81,36 @@ async function createMainWindow() {
     }
   });
 
-  await checkServerReady();
-  await mainWindow.loadURL(SERVER_URL);
-  mainWindow.show();
+  log('Waiting for backend server to become ready...');
+  const isReady = await checkServerReady();
+
+  if (isReady) {
+    await mainWindow.loadURL(SERVER_URL);
+    mainWindow.show();
+    log('Main window opened and displayed successfully.');
+  } else {
+    // If backend health check failed, try loading anyway or show error
+    log('Server was not ready in time, loading localhost URL anyway...');
+    try {
+      await mainWindow.loadURL(SERVER_URL);
+      mainWindow.show();
+    } catch (loadErr) {
+      log(`Failed to load URL: ${loadErr.message}`);
+      dialog.showErrorBox(
+        'Ошибка загрузки интерфейса',
+        `Не удалось подключиться к локальному серверу (${SERVER_URL}).\nПроверьте, не занят ли порт 3000 другим приложением.`
+      );
+    }
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
-app.whenReady().then(() => {
-  startBackendServer();
-  createMainWindow();
+app.whenReady().then(async () => {
+  await startBackendServer();
+  await createMainWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -80,3 +124,4 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+

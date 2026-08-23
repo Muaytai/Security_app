@@ -5,7 +5,8 @@ import { initialSeedTopics, initialSeedQuestions } from './seedData';
 
 let SQL: SqlJsStatic;
 let db: Database;
-const DB_FILE_PATH = path.join(process.cwd(), 'safety_test.sqlite');
+const DB_DIR = process.env.USER_DATA_PATH || process.cwd();
+const DB_FILE_PATH = path.join(DB_DIR, 'safety_test.sqlite');
 
 export async function getDb(): Promise<Database> {
   if (db) return db;

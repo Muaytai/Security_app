@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import multer from 'multer';
 import { getDb, persistDb } from './server/db';
@@ -857,7 +858,16 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    let distPath = path.join(process.cwd(), 'dist');
+    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+      distPath = __dirname;
+    }
+    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+      distPath = path.join(__dirname, 'dist');
+    }
+    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+      distPath = path.join(__dirname, '..', 'dist');
+    }
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
