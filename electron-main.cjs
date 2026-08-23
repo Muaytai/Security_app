@@ -26,12 +26,27 @@ async function startBackendServer() {
     process.env.USER_DATA_PATH = app.getPath('userData');
 
     log('Loading bundled server...');
-    const serverPath = path.join(__dirname, 'dist', 'server.cjs');
-    
-    if (!fs.existsSync(serverPath)) {
-      throw new Error(`Server file not found at: ${serverPath}`);
+    const candidatePaths = [
+      path.join(__dirname, 'dist', 'server.cjs'),
+      path.join(__dirname, 'server.cjs'),
+      path.join(app.getAppPath(), 'dist', 'server.cjs'),
+      path.join(app.getAppPath(), 'server.cjs'),
+      path.join(process.resourcesPath, 'app', 'dist', 'server.cjs')
+    ];
+
+    let serverPath = '';
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        serverPath = p;
+        break;
+      }
     }
 
+    if (!serverPath) {
+      throw new Error(`Server file not found in any candidate path:\n${candidatePaths.join('\n')}`);
+    }
+
+    log(`Found server at: ${serverPath}`);
     require(serverPath);
     log('Backend server initialized successfully.');
   } catch (err) {

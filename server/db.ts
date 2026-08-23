@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
 import { initialSeedTopics, initialSeedQuestions } from './seedData';
+
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 let SQL: SqlJsStatic;
 let db: Database;
@@ -11,7 +14,20 @@ const DB_FILE_PATH = path.join(DB_DIR, 'safety_test.sqlite');
 export async function getDb(): Promise<Database> {
   if (db) return db;
 
-  SQL = await initSqlJs();
+  const possibleWasmPaths = [
+    path.join(currentDir, 'sql-wasm.wasm'),
+    path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),
+    path.join(currentDir, '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),
+  ];
+  let locateFile: ((file: string) => string) | undefined = undefined;
+  for (const p of possibleWasmPaths) {
+    if (fs.existsSync(p)) {
+      locateFile = () => p;
+      break;
+    }
+  }
+
+  SQL = await initSqlJs(locateFile ? { locateFile } : undefined);
 
   function initFreshDb(): Database {
     const freshDb = new SQL.Database();
