@@ -12,67 +12,123 @@ export async function getDb(): Promise<Database> {
 
   SQL = await initSqlJs();
 
+  function initFreshDb(): Database {
+    const freshDb = new SQL.Database();
+    freshDb.run(`
+      CREATE TABLE IF NOT EXISTS topics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        topic_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        image_url TEXT,
+        explanation TEXT,
+        is_multiple_choice INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(topic_id) REFERENCES topics(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS options (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        is_correct INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS test_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_name TEXT NOT NULL,
+        department TEXT NOT NULL,
+        topic_id INTEGER,
+        mode TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        total_questions INTEGER NOT NULL,
+        passed INTEGER NOT NULL,
+        time_spent_seconds INTEGER DEFAULT 0,
+        answers_json TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    return freshDb;
+  }
+
+  let loadedSuccessfully = false;
   if (fs.existsSync(DB_FILE_PATH)) {
     try {
       const fileBuffer = fs.readFileSync(DB_FILE_PATH);
-      db = new SQL.Database(fileBuffer);
+      if (fileBuffer.length > 0) {
+        db = new SQL.Database(fileBuffer);
+        // Verify disk image integrity
+        db.exec('PRAGMA schema_version;');
+        db.run(`
+          CREATE TABLE IF NOT EXISTS topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            icon TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic_id INTEGER NOT NULL,
+            text TEXT NOT NULL,
+            image_url TEXT,
+            explanation TEXT,
+            is_multiple_choice INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question_id INTEGER NOT NULL,
+            text TEXT NOT NULL,
+            is_correct INTEGER NOT NULL DEFAULT 0
+          );
+          CREATE TABLE IF NOT EXISTS test_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_name TEXT NOT NULL,
+            department TEXT NOT NULL,
+            topic_id INTEGER,
+            mode TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            passed INTEGER NOT NULL,
+            time_spent_seconds INTEGER DEFAULT 0,
+            answers_json TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        loadedSuccessfully = true;
+      }
     } catch (e) {
-      console.error('Error loading existing SQLite database, creating fresh one:', e);
-      db = new SQL.Database();
+      console.error('Existing SQLite file corrupted or malformed, resetting to fresh DB:', e);
+      try {
+        fs.unlinkSync(DB_FILE_PATH);
+      } catch (_) {}
     }
-  } else {
-    db = new SQL.Database();
   }
 
-  // Create tables if not exist
-  db.run(`
-    CREATE TABLE IF NOT EXISTS topics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT,
-      icon TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      topic_id INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      image_url TEXT,
-      explanation TEXT,
-      is_multiple_choice INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(topic_id) REFERENCES topics(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS options (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      question_id INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      is_correct INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS test_results (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      employee_name TEXT NOT NULL,
-      department TEXT NOT NULL,
-      topic_id INTEGER,
-      mode TEXT NOT NULL,
-      score INTEGER NOT NULL,
-      total_questions INTEGER NOT NULL,
-      passed INTEGER NOT NULL,
-      time_spent_seconds INTEGER DEFAULT 0,
-      answers_json TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  if (!loadedSuccessfully) {
+    db = initFreshDb();
+  }
 
   // Check if we need to seed
-  const countRes = db.exec('SELECT COUNT(*) as count FROM topics');
-  const topicsCount = (countRes[0]?.values[0]?.[0] as number) || 0;
+  try {
+    const countRes = db.exec('SELECT COUNT(*) as count FROM topics');
+    const topicsCount = (countRes[0]?.values[0]?.[0] as number) || 0;
 
-  if (topicsCount === 0) {
+    if (topicsCount === 0) {
+      seedDatabase();
+    }
+  } catch (err) {
+    console.error('Error during topics check, reseeding:', err);
+    db = initFreshDb();
     seedDatabase();
   }
 
