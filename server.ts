@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import multer from 'multer';
 import { getDb, persistDb } from './server/db';
@@ -16,9 +15,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 40 * 1024 * 1024 }, // 40MB limit for rich PDFs/DOCX
 });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
