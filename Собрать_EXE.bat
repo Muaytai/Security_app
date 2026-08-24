@@ -34,22 +34,26 @@ echo ===================================================
 echo [4] Создание EXE файла (electron-builder)...
 echo ===================================================
 call npx electron-builder --win --x64
-if errorlevel 1 goto TRY_PORTABLE
+if errorlevel 1 goto TRY_DIR
 goto SUCCESS
 
-:TRY_PORTABLE
+:TRY_DIR
 echo.
-echo Попытка сборки в portable-режиме...
-call npx electron-builder --win portable --x64
+echo Попытка сборки распакованной папки (без архиватора)...
+call npx electron-builder --win --dir
 if errorlevel 1 goto ERR_EXE
 
 :SUCCESS
 echo.
 echo ===================================================
-echo [УСПЕХ] EXE файл успешно создан в папке dist-electron!
+echo [УСПЕХ] Приложение собрано в папке dist-electron!
 echo ===================================================
 echo.
-if exist "dist-electron" explorer "dist-electron"
+if exist "dist-electron\win-unpacked" (
+    explorer "dist-electron\win-unpacked"
+) else (
+    if exist "dist-electron" explorer "dist-electron"
+)
 goto END
 
 :NO_NODE
