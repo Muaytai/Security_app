@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
 import { initialSeedTopics, initialSeedQuestions } from './seedData';
 
-const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 let SQL: SqlJsStatic;
 let db: Database;

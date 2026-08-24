@@ -1,8 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import multer from 'multer';
 import { getDb, persistDb } from './server/db';
 import { initialSeedTopics, initialSeedQuestions } from './server/seedData';
@@ -13,7 +11,7 @@ import {
   parseWithGeminiAI,
 } from './server/fileParser';
 
-const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -855,21 +853,26 @@ async function startServer() {
   // VITE / STATIC SERVING
   // -------------------------------------------------------------
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
+    const possibleDistPaths = [
+      path.join(process.cwd(), 'dist'),
+      path.join(__dirname, 'dist'),
+      path.join(__dirname, '..', 'dist'),
+      __dirname,
+      process.cwd()
+    ];
     let distPath = path.join(process.cwd(), 'dist');
-    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
-      distPath = currentDir;
-    }
-    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
-      distPath = path.join(currentDir, 'dist');
-    }
-    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
-      distPath = path.join(currentDir, '..', 'dist');
+    for (const p of possibleDistPaths) {
+      if (fs.existsSync(path.join(p, 'index.html'))) {
+        distPath = p;
+        break;
+      }
     }
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
